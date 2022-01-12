@@ -6,12 +6,15 @@ import matplotlib.pyplot as plt
 import re
 from openpyxl import load_workbook
 
-def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=False): 
+def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=False):
     # This function imports raw test data, calculates test results (discharge amp hours and cell capacites), 
     # and then appends the test results to an ongoing summary file
     
     # import data
+    #data = pd.read_csv(data_file_path)
     data = pd.read_csv(data_file_path, error_bad_lines=False)
+    #data2= pd.read_csv(data_file_path_2,error_bad_lines=False)     # use these lines to concatenate data if it was split in two parts  also have to make second file path at the bottom
+    #data = data.append(data2)
 
     # check if csv has headers or not
     has_headers = True
@@ -71,7 +74,7 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     soc_curve = pd.read_csv(soc_curve_file)
     ocv = soc_curve.iloc[:,0].values.astype(float)
     soc = soc_curve.iloc[:,1].values.astype(float)
-    [startSOC, endSOC] = np.interp([StartVs, EndVs], ocv, soc)
+    [startSOC, endSOC] = np.interp([StartVs, EndVs], ocv, soc)   #multiple inputs gives multiple outputs
 
     # integrate discharge current to get discharge amp hours
     if has_headers:
@@ -83,15 +86,22 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
         tmstmp = data.iloc[:,0]
     ahDch = np.zeros(len(Ipack)-1)
     for i in range(len(Ipack)-2):
-        if Ipack[i+1]>0:    # calcualte ahDch for positive values of current only (positive = discharge)
-            ahDch[i+1] = ahDch[i] + .5*(tmstmp[i+2]-tmstmp[i+1])*(Ipack[i+2]+Ipack[i+1])
+        if Ipack[i+1]>0:    # calcualte ahDch for positive values of current only (positive = discharge) #ahdch = amp hour discharge
+            ahDch[i+1] = ahDch[i] + .5*(tmstmp[i+2]-tmstmp[i+1])*(Ipack[i+2]+Ipack[i+1]) #trapezoidal integration
         else: 
             ahDch[i+1] = ahDch[i]
-    DCH1 = ahDch[int(Step[16])]
-    DCHTotal = ahDch[-1]
+    DCH1 = ahDch[int(Step[16])] #what is this?? --> how much was discharged up until the vs point
+    #dch2 is then the discharge amount agter that
+    
+# ahdch is the total discharged over the whole graph
+    
+    #dch 1 and 2 are the ifferent discharger cylces, its used to distinguish capacity values for the state of health graph
+    #(capacity drops after 1 discharge cycle, so on and so on)  soh is capacity over rated capacity
+    #cycles is ah/rated capacity
+    DCHTotal = ahDch[-1]  #total ah discharge
     DCH2 = DCHTotal - DCH1
     # C (const curr.) as specified by the associated Digatron test 
-    CapDchAh = cc*(tmstmp[int(Step[start_idx+1])]-tmstmp[int(Step[start_idx])])   
+    CapDchAh = cc*(tmstmp[int(Step[start_idx+1])]-tmstmp[int(Step[start_idx])])   #cc is constant current, what current it was discharging at
 
     # calculate individual cell capacities
     Cap = np.zeros((len(startSOC,)))
@@ -100,12 +110,13 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
 
     # determine test name
     test_name = data_file_path.split('_')
-    test_name = test_name[-1].split('.')
+    test_name = test_name[-2] +'-' + test_name[-1].split('.')[0]
 
     if isCalendarAging: 
         # get NP number
-        x = re.findall("NP\d+", data_file_path)
+        x = re.findall("NP\d", data_file_path)
         NPname = x[-1]
+        NPname = "NP12"
         # import summary from correct sheet name
         summary = pd.read_excel(summary_file, sheet_name=NPname)
         test_name = 'char ' + str(summary.shape[0]+1)
@@ -116,7 +127,7 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
         # import summary csv, append new summary, save as csv
         summary_updated = np.concatenate([np.array([test_name, end_date, days_elapsed, DCH1, DCH2]), Cap])
         summary.loc[len(summary)] = summary_updated
-        # summary.to_excel(summary_file, sheet_name = NPname, index=False, encoding='utf-8-sig')
+        #summary.to_excel(summary_file, sheet_name = NPname, index=False, encoding='utf-8-sig')
 
         # open excel sheet with ExcelWriter to avoid overwritting other sheets
         book = load_workbook(summary_file)
@@ -128,13 +139,13 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     else: 
         # import summary csv, append new summary, save as csv
         summary = pd.read_csv(summary_file)
-        summary_updated = np.concatenate([np.array([test_name[0], DCH1, DCH2]), Cap])
+        summary_updated = np.concatenate([np.array([test_name, DCH1, DCH2]), Cap])
         summary.loc[len(summary)] = summary_updated
         summary.to_csv(summary_file, index=False, encoding='utf-8-sig')
 
 # ------------------------------------ General Nissan Info ------------------------------
 # path to OCV-SOC csv file
-soc_curve_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/SOC_curve.csv'
+soc_curve_file = r'C:/Users/amirs/Downloads/SOC_curve.csv'
 
 # number of total cells in test (3 modules each with 6 cells)
 cell_num = 16     
@@ -144,55 +155,65 @@ cc = 20
 
 # ------------------------------------ Nissan Pack 5 ------------------------------
 # path to where raw test csv is stored
-path = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Nissan/NP5/'
+#r is like a backslash in other programs where it ignores what comes after the r' and treats it like text instead of a command
+path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP5/'
 
 # name of csv file
-data_file = r'cellvoltages_2021-08-20-09-58-24_NP5-Aging15.csv'
+data_file = r'cellvoltages_2022-01-03-12-31-01_NP5_char8.csv'
+#data_file2 =r'cellvoltages_2021-09-27-16-08-23-NP5-Aging18_2.csv'
 data_file_path = path + data_file
+#data_file_path_2 = path + data_file2
 
 # path to test summary file
-summary_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/NP5/NP5_test_summary.csv'
+summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP5_test_summary.csv'
 
-# getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Pack 6 ------------------------------
 # path to where raw test csv is stored
-path = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Nissan/NP6/'
+path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP6/'
 
 # name of csv file
-data_file = r'cellvoltages_2021-09-10-10-37-52-NP6-Aging30.csv'
+data_file = r'cellvoltages_2022-01-03-12-29-36_NP6_char10.csv'
 data_file_path = path + data_file
 
 # path to test summary file
-summary_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/NP6/NP6_test_summary.csv'
+summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP6_test_summary.csv'
 
-# getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Calendar Aging ------------------------------
 # path to test summary file
-summary_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/Calendar Aging/Calendar_Processed_Data_new.xlsx'
+summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/Calendar_Processed_Data.xlsx'
 
 # path to where raw test csv is stored
-path = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Nissan/Nissan_Calendar_Aging/'
+path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/Calendar/'
 
-# # NP7
-# data_file = r'cellvoltages_2021-08-23-10-09-44_NP7_100_char3.csv'
-# data_file_path = path + 'NP7/' + data_file
+# NP7
+data_file = r'cellvoltages_2021-12-09-09-34-49_NP7_100.csv'
+data_file_path = path + 'NP7/' + data_file
 
-# # NP9
-# data_file = r'cellvoltages_2021-05-24-12-22-48-NP7-100_char2.csv'
-# data_file_path = path + 'NP9/' + data_file
+
+
+# NP9
+data_file = r'cellvoltages_2021-12-10-14-17-27_NP9_75 (1).csv'
+data_file_path = path + 'NP9/' + data_file
+
+
 
 # NP10
-data_file = r'cellvoltages_2021-10-26-12-18-17_NP10_90_char3.csv'
+data_file = r'cellvoltages_2021-12-13-13-33-22_NP10_90.csv'
 data_file_path = path + 'NP10/' + data_file
 
-# # NP12
-# data_file = r'cellvoltages_2021-05-24-12-22-48-NP7-100_char2.csv'
-# data_file_path = path + 'NP12/' + data_file
 
+# NP12
+data_file = r'cellvoltages_2021-12-11-16-39-30_NP12_50.csv'
+data_file_path = path + 'NP12/' + data_file
+data_file2 =r'cellvoltages_2021-12-12-16-27-08_NP12_50_2.csv'
+data_file_path_2 = path +'NP12/' + data_file2
 
-getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)
+
 
 
 # ------------------------- For Processing Multiple Files ---------------------
