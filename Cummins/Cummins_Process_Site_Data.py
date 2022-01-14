@@ -7,7 +7,7 @@ from scipy import signal
 
 
 # Step 1: combine all log data into one dataset and save dataset to file system
-def combine_and_save_data(folder, outpath=r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Cummins/combined_datasets'):
+def combine_and_save_data(folder, outpath=r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Cummins/CumminsProcessing/combined_datasets'):
     test_name = folder.split('/')[-1]
     logs = [l[2] for l in os.walk(folder)]
     if '.DS_Store' in logs[0]: logs[0].remove('.DS_Store')
@@ -17,23 +17,23 @@ def combine_and_save_data(folder, outpath=r'/Users/quiana/Documents/UCSD/CER/Dat
     datetime_string = combined_logs.date + " " + combined_logs.time # dd-mm-yy h:mm:ss
     # datetime_string.to_csv(outpath + "/" + test_name + "datetime.csv")
     combined_logs['Datetime'] = datetime_string
-    combined_logs.dropna(subset = ["Datetime"], inplace=True)
+    combined_logs.dropna(subset = ["Datetime"], inplace=True)   #drops any not valid datetime strings
     datetime_object = [datetime.strptime(d, '%d-%m-%Y %H:%M:%S') for d in combined_logs['Datetime']]
     combined_logs['Datetime'] = datetime_object
-    datetime_object.sort()
+    datetime_object.sort()   #combines the logs and sorts by the timesteps
     combined_logs.sort_values(by=['Datetime'],inplace=True)
     combined_logs.to_csv( outpath + "/" + test_name + ".csv", index=False, encoding='utf-8-sig')
     return combined_logs, datetime_object
 
-# Step 2: get indices of StartV and EndV for characterization data
+# Step 2: get indices of StartV and EndV for characterization data    #the interpolation method doesnt work
 def get_StartEndIs(data, show_plot=False):
     v = data.BMU01_Cell_1_Voltage.to_numpy()
     # v = data.modbus_Voltage.to_numpy()    # for using module kernels
     # --------- convolution -----------
     # Do this once for each processing
-    kernel_high = np.genfromtxt("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Cummins/kernel_high.csv",delimiter=',')
+    kernel_high = np.genfromtxt("C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Cummins/CumminsProcessing/kernel_high.csv",delimiter=',')
     length_high = len(kernel_high)
-    kernel_low = np.genfromtxt("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Cummins/kernel_low.csv",delimiter=',')
+    kernel_low = np.genfromtxt("C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Cummins/CumminsProcessing/kernel_low.csv",delimiter=',')
     length_low = len(kernel_low)
 
     tmp_high = np.zeros(len(v) - length_high)
@@ -47,10 +47,10 @@ def get_StartEndIs(data, show_plot=False):
     startpoints_high = signal.find_peaks(-tmp_high, height=-10,distance=100)
     # startpoints_high = signal.find_peaks(-tmp_high, height=-300,distance=100)
     startpoints_high = startpoints_high[0] + 399
-    # startpoints_high = startpoints_high[0] + 103  # for using kernel_high_mod.csv
+    # startpoints_high = startpoints_high[0] + 103  # for using kenerl_high_mod.csv
     startpoints_low = signal.find_peaks(-tmp_low, height=-10,distance=100)
     startpoints_low = startpoints_low[0] + 181
-    # startpoints_low = startpoints_low[0] + 227    # for using kernel_low_mod.csv
+    # startpoints_low = startpoints_low[0] + 227    # for using kenerl_low_mod.csv
     # ----------------------------------------
 
     # ------- get startIs and endIs
@@ -105,7 +105,7 @@ def getCharacDch(data, datetime_object, startI, endI):
     # plt.show()
     DCH1 = ahDch[startI]
     DCH2 = ahDch[-1] - ahDch[startI]
-    CapDch = ahDch[endI]-ahDch[startI]
+    CapDch = ahDch[endI]-ahDch[startI]     #normally an integral, just uses the integral of the dch that was already calculated because cummins power suply isnt as good as digatron
 
     WhDch1 = whDch[startI]
     WhDch2 = whDch[-1] - whDch[startI]
@@ -118,14 +118,14 @@ def getAgingDch(data, datetime_object):
     tmstmp = [t.timestamp()/3600 for t in datetime_object]
     c[c<0] = 0      # we want to integrate discharge only, so disregard any positive current 
     p[p<0] = 0      # we want to integrate discharge only, so disregard any positive power 
-    ahDch = np.trapz(c,tmstmp)
+    ahDch = np.trapz(c,tmstmp)  #integrates over the whole graph, but charing current is 0
     whDch = np.trapz(p,tmstmp)
     return ahDch, whDch
 
 # Step 5: get capacity
-def getCap(v, CapDch, startI, endI, type='cell'):
+def getCap(v, CapDch, startI, endI, type='cell'):  #since everything is in series, the capach and start I and stuff are the same for all of them, only voltage changes and type
     # convert start/end Vs to SOC
-    soc_curve = pd.read_excel("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Cummins/SOCcurve.xlsx")
+    soc_curve = pd.read_excel("C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Cummins/CumminsProcessing/SOCcurve.xlsx")
     soc = soc_curve.iloc[2:102,2].values.astype(float)
     if type=='cell': ocv = soc_curve.iloc[2:102,3].values.astype(float)
     else: ocv = soc_curve.iloc[2:102,4].values.astype(float)
@@ -137,26 +137,66 @@ def getCap(v, CapDch, startI, endI, type='cell'):
     cap = 100/(startSOC-endSOC)*CapDch
     return cap, v_start, v_end
 
+def getIndexes(data):       #this function tries to find the start and end Vs from manually programmed pattern recognition from the voltage curve if the other method fails
+    #possibly add polynomial regression fit and check r^2 value to see if it messed up or no, in previous data, the cycle was interupted with weird spikes
+    volts = data.BMU01_Cell_1_Voltage.to_numpy()
+    startind = 0
+    endvind = 0
+    for i in range(len(volts))[100:len(volts)-100]:
+        if volts[i] == volts[i-1] and volts[i] == volts[i-2] and volts[i] == volts[i-3] and volts[i] == volts[i-25] and volts[i]==volts[i-50] and volts[i-300] ==volts[i]:
+            #print("first cond met " + str(i))
+            if volts[i]-volts[i+50] > 0 and volts[i+50]-volts[i+100]>0 and volts[i+100]-volts[i+150]>0 and volts[i]>3.8:
+                #print("first cond met startind")
+                startind = i
+            elif startind >0 and volts[i]-volts[i+50] < 0 and volts[i+50]-volts[i+100]<0 and volts[i+100]-volts[i+150]<0 and volts[i]<3.6:
+                if i-startind <3000:
+                    #print("first cond met ednind")
+                    endind = i
+                    
+                    startind = [startind]
+                    endind = [i]
+                    break
+    def getStartEndVs(startpoints, highLow, z=20):
+        V = np.zeros(len(startpoints))
+        I = np.zeros(len(startpoints))
+        z=20
+        for i,s in enumerate(startpoints):
+            v_tmp = volts[s-z:s+z]
+            if highLow=='high': spots = np.where(v_tmp==np.amax(v_tmp))[0]
+            elif highLow=='low': spots = np.where(v_tmp==np.amin(v_tmp))[0]
+            volts[i] = volts[s + (spots[-1]-z)]
+            I[i] = s + (spots[-1]-z)
+        return V, I
+    [startVs, startIs] = getStartEndVs(startind, 'high')
+    [endVs, endIs] = getStartEndVs(endind, 'low')
+    #startIs
+    return startIs,endIs
+
 
 # User input: Char folder path and Aging folder path
-char_folder = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Cummins/Char9'
+char_folder = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Cummins/CumminsProcessing/Char16'
 aging_folder = ''
-aging_folder = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Cummins/Aging12'
+aging_folder = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Cummins/CumminsProcessing/Aging19'     #uncomment for new data
 
 
 [data, datetime_object] = combine_and_save_data(char_folder)
+dataReindex = data.reindex()
 [startIs, endIs] = get_StartEndIs(data, show_plot=True)
 # Char1: n=1, Char2: n=0, Char3: no n
-n=0 
+n=0      #put break here, look at graph manually and choose the start and end vs manually with the plot
 if len(startIs)>n:
     startI = int(startIs[n])
 else:
-    # startI = 2781       # Char3
-    # startI = 7860       # Char4
-    # startI = 9542       # Char6
-    # startI = 23926      # Char7
-    startI = 6354       # Char8
+    # startI = 2781   # Char3
+    # startI = 7860   # Char4
+    # startI = 9542   # Char6
+    #startI = .....    #leave uncommented for new data
+    #startI = 8345   #uncomment this line and line 208 if neither of the methods to find end and start I's works, look at graph manually to find the indices
+    [startIs, endIs] = getIndexes(dataReindex)
+    startI = int(startIs[n])
+    endI = int(endIs[n])
     print('No startpoints found via convolution, startI was mannually assigned')
+    endIs = []
 if len(endIs)>n: 
     endI = int(endIs[n])
 else: 
@@ -165,8 +205,7 @@ else:
     # endI = 10420    # Char4
     # endI = 4020     # Char5
     # endI = 11678    # Char6
-    endI = 26057      # Char7
-    endI = 8482       # Char8
+    #endI = 10485
     print('No endpoints found via convolution, endI was mannually assigned')
 
 fig, ax = plt.subplots(figsize=(8,6))
@@ -177,11 +216,11 @@ plt.show()
 
 [DCH1, DCH2, CapDch, WhDch1, WhDch2] = getCharacDch(data, datetime_object, startI, endI)
 
-if len(aging_folder)>0: 
+if len(aging_folder)>0:  #does agining processing with the characteruization processing
     [aging_data, aging_datetime_object] = combine_and_save_data(aging_folder)
     [agingDch, agingWhDch] = getAgingDch(aging_data, aging_datetime_object)
     # add aging ahdch, whdch to dch1, WhDch1 from char 
-    DCH1 += agingDch
+    DCH1 += agingDch      #aging happens before characterization
     WhDch1 += agingWhDch
 
 # loop through all modules
@@ -191,7 +230,7 @@ module_caps = np.zeros(module_num)
 cell_caps = np.zeros(module_num*cell_num)
 module_Vs = np.zeros(module_num*2)
 for m in range(module_num):      
-    module = 'BMU0' + str(m+1)
+    module = 'BMU0' + str(m+1)   #can index with the culumn name with datafram
     v_mod = data[module + '_CMA_Voltage'].to_numpy()
     [cap_mod, startv, endv] = getCap(v_mod, CapDch, startI, endI, type='module')
     module_caps[m] = cap_mod
@@ -208,19 +247,21 @@ test_name = char_folder.split('/')
 summary_updated = np.concatenate([np.array([test_name[-1], DCH1, DCH2, WhDch1, WhDch2]), module_caps, cell_caps])
 
 # import summary csv, append new summary, save as csv
-summary_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Cummins/testing_summary.csv'
+summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Cummins/CumminsProcessing/testing_summary.csv'
 summary = pd.read_csv(summary_file)
 summary.loc[len(summary)] = summary_updated
 summary.to_csv(summary_file, index=False, encoding='utf-8-sig')
 
 # concatenate CMA details into summary array
 CMA_details_updated = np.concatenate([np.array([test_name[-1], CapDch]), module_Vs])
-
-# import CMA details summary, append new summary, and save as csv
-details_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Cummins/testing_CMA_details.csv'
-details = pd.read_csv(details_file)
-details.loc[len(details)] = CMA_details_updated
-details.to_csv(details_file, index=False, encoding='utf-8-sig')
+# =============================================================================
+# 
+# # import CMA details summary, append new summary, and save as csv
+# details_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Cummins/testing_CMA_details.csv'
+# details = pd.read_csv(details_file)
+# details.loc[len(details)] = CMA_details_updated
+# details.to_csv(details_file, index=False, encoding='utf-8-sig')
+# =============================================================================
 
     
 
