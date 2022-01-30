@@ -3,14 +3,18 @@ from matplotlib.patches import Rectangle
 import numpy as np
 import pandas as pd
 import datetime as dt
-
+from matplotlib.lines import Line2D
+import statistics
+from math import pi
+from matplotlib.table import table
+from matplotlib.patches import Patch
 # ---------------------------- import data from summary spreadsheet ---------------------------- 
-summary_file = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Tesla/Tesla_3s/Tesla_test_summary.csv'
-summary_data = pd.read_csv(summary_file)
+summary_file = r'/Users/liamk/OneDrive/Desktop/ESS LAB/Data/Tesla/Tesla_test_summary.xlsx'
+summary_data = pd.read_excel(summary_file)
 rated_cap = 200
 fs = 15     # universal fontsize
-save_plot = True   # Change to True to save plot as .png
-outpath = r'/Users/quiana/Documents/UCSD/CER/Plots/Tesla/'    # path for saving plot
+save_plot = False   # Change to True to save plot as .png
+outpath = r'/Users/liamk/OneDrive/Desktop/ESS LAB/Data/Tesla/'    # path for saving plot
 
 #  ---------------------------- calculate cycles ---------------------------- 
 rows = summary_data.shape[0]
@@ -29,6 +33,7 @@ cell_caps = summary_data.iloc[:,idx1:idx2+1].to_numpy()
 cell_soh = cell_caps/rated_cap*100      # convert to %
 soh_mean = np.mean(cell_soh,axis=1)
 soh_std = np.std(cell_soh, axis=1)
+
 
 #  ---------------------------- SOH summary plot ---------------------------- 
 fig, ax = plt.subplots(figsize=(12,6))
@@ -137,4 +142,50 @@ ax.add_patch(Rectangle((0,-1.32), xlim_right, 1.76, edgecolor='black', fill=Fals
 test_names = summary_data['test'].to_numpy()
 if save_plot: plt.savefig(outpath + test_names[-1] + ' Gantt Chart.jpg', dpi=1000)
 
+# ------------------ characterization chart -------------------------
+cell_std = np.std(cell_caps, axis=1)
+end_limits = [200, 60, .8]
+resistance = 120
+current_val = [resistance, soh_mean[-1], cell_std[-1]]
+polar_data = [resistance/end_limits[0]*100, end_limits[1]/soh_mean[-1]*100, cell_std[-1]/end_limits[2]*100]
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax = plt.subplot(projection='polar')
+# data = [63, 85, 43]
+startangle = 90
+colors = ['#4393E5', '#43BAE5', '#7AE6EA']
+xs = [(i * pi * 2) / 100 for i in polar_data]
+ys = [-0.2, 1, 2.2]
+left = (startangle * pi * 2) / 360  # this is to control where the bar starts
+# plot bars and points at the end to make them round
+for i, x in enumerate(xs):
+    ax.barh(ys[i], x, left=left, height=1, color=colors[i])
+    ax.scatter(x + left, ys[i], s=350, color=colors[i], zorder=2)
+    ax.scatter(left, ys[i], s=350, color=colors[i], zorder=2)
+
+plt.ylim(-4, 4)
+# legend
+lbl1 = ''
+legend_elements = [Line2D([0], [0], marker='o', color='w', label='Resistance: {val} %'.format(val=round(polar_data[0],2)), markerfacecolor='#4393E5', markersize=10),
+                   Line2D([0], [0], marker='o', color='w', label='SOH : {val} %'.format(val=round(polar_data[1],2)), markerfacecolor='#43BAE5', markersize=10),
+                   Line2D([0], [0], marker='o', color='w', label='Cell Imbalance: {val} %'.format(val=(round(polar_data[2],2))), markerfacecolor='#7AE6EA', markersize=10)]
+ax.legend(handles=legend_elements, loc='best', frameon=True, prop={'size': 7})
+ax.set_title('Battery Chararcteristics', size=12)
+# clear ticks, grids, spines
+plt.xticks([])
+plt.yticks([])
+ax.spines.clear()
+a = np.array([current_val])
+b = np.array([end_limits])
+c = np.array([polar_data])
+data2 = np.round(np.concatenate((a.transpose(), b.transpose(), c.transpose()), axis=1),2)
+rows = ['Resistance [% increase]', 'SOH', 'Cell Imbalance']
+columns = ['Current Value', 'End Limit', 'Completion %']
+the_table = plt.table(cellText=data2,
+                      rowLabels=rows,
+                      colLabels=columns,
+                      loc='bottom',)
+the_table.auto_set_font_size(False)
+the_table.set_fontsize(11)
+plt.subplots_adjust(bottom=.2, hspace=.6)
 plt.show()
