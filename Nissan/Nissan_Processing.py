@@ -5,6 +5,7 @@ import os
 import matplotlib.pyplot as plt
 import re
 from openpyxl import load_workbook
+import matlab.engine #look at matlab documentation to install this module
 
 def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=False):
     # This function imports raw test data, calculates test results (discharge amp hours and cell capacites), 
@@ -15,7 +16,7 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     data = pd.read_csv(data_file_path, error_bad_lines=False)
     #data2= pd.read_csv(data_file_path_2,error_bad_lines=False)     # use these lines to concatenate data if it was split in two parts  also have to make second file path at the bottom
     #data = data.append(data2)
-
+    rated_cap = 56.3
     # check if csv has headers or not
     has_headers = True
     if data.columns[0] != 'Time':
@@ -111,12 +112,17 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     # determine test name
     test_name = data_file_path.split('_')
     test_name = test_name[-2] +'-' + test_name[-1].split('.')[0]
+    
+    #Internal resistance
+    eng = matlab.engine.start_matlab()
+    eng.NP6_parameter_identification(nargout=0)
+    R0 = eng.workspace["R0"]    #use R0_all for all of the cell resistances and either sum or average them
 
     if isCalendarAging: 
         # get NP number
         x = re.findall("NP\d", data_file_path)
         NPname = x[-1]
-        NPname = "NP12"
+        NPname = "NP12"    #change based on what pack you are processing
         # import summary from correct sheet name
         summary = pd.read_excel(summary_file, sheet_name=NPname)
         test_name = 'char ' + str(summary.shape[0]+1)
@@ -139,13 +145,13 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     else: 
         # import summary csv, append new summary, save as csv
         summary = pd.read_csv(summary_file)
-        summary_updated = np.concatenate([np.array([test_name, DCH1, DCH2]), Cap])
+        summary_updated = np.concatenate([np.array([test_name, DCH1, DCH2]), Cap,np.array([np.mean(Cap/rated_cap)]),np.array([R0])])
         summary.loc[len(summary)] = summary_updated
         summary.to_csv(summary_file, index=False, encoding='utf-8-sig')
 
 # ------------------------------------ General Nissan Info ------------------------------
 # path to OCV-SOC csv file
-soc_curve_file = r'C:/Users/amirs/Downloads/SOC_curve.csv'
+soc_curve_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/SOC_curve.csv'
 
 # number of total cells in test (3 modules each with 6 cells)
 cell_num = 16     
@@ -159,7 +165,7 @@ cc = 20
 path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP5/'
 
 # name of csv file
-data_file = r'cellvoltages_2022-01-03-12-31-01_NP5_char8.csv'
+data_file = r'cellvoltages_2022-01-13-14-42-37_NP5_Aging30.csv'
 #data_file2 =r'cellvoltages_2021-09-27-16-08-23-NP5-Aging18_2.csv'
 data_file_path = path + data_file
 #data_file_path_2 = path + data_file2
@@ -167,18 +173,32 @@ data_file_path = path + data_file
 # path to test summary file
 summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP5_test_summary.csv'
 
-getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Pack 6 ------------------------------
 # path to where raw test csv is stored
 path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP6/'
 
 # name of csv file
-data_file = r'cellvoltages_2022-01-03-12-29-36_NP6_char10.csv'
+data_file = r'cellvoltages_2022-01-13-14-43-20_NP6_Aging42.csv'
 data_file_path = path + data_file
 
 # path to test summary file
 summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP6_test_summary.csv'
+
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+
+
+# ------------------------------------ Nissan Pack 3 ------------------------------
+# path to where raw test csv is stored
+path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP3/'
+
+# name of csv file
+data_file = r'cellvoltages_2021-03-03-12-37-22_NP3_Aging21.csv'
+data_file_path = path + data_file
+
+# path to test summary file
+summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP3_test_summary.csv'
 
 getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
@@ -207,12 +227,12 @@ data_file_path = path + 'NP10/' + data_file
 
 
 # NP12
-data_file = r'cellvoltages_2021-12-11-16-39-30_NP12_50.csv'
+data_file = r'cellvoltages_2022-01-09-13-48-49_NP12_50_Char3.csv'
 data_file_path = path + 'NP12/' + data_file
-data_file2 =r'cellvoltages_2021-12-12-16-27-08_NP12_50_2.csv'
-data_file_path_2 = path +'NP12/' + data_file2
+#data_file2 =r'cellvoltages_2021-12-12-16-27-08_NP12_50_2.csv'
+#data_file_path_2 = path +'NP12/' + data_file2
 
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)     #uncomment for calendar aging
 
 
 
