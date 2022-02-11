@@ -116,7 +116,8 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     #Internal resistance
     eng = matlab.engine.start_matlab()
     eng.NP6_parameter_identification(nargout=0)
-    R0 = eng.workspace["R0"]    #use R0_all for all of the cell resistances and either sum or average them
+    R0 = np.sum(eng.workspace["R0_all"])    #use R0_all for all of the cell resistances and either sum or average them
+    #R0 = 0
 
     if isCalendarAging: 
         # get NP number
@@ -165,7 +166,7 @@ cc = 20
 path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP5/'
 
 # name of csv file
-data_file = r'cellvoltages_2022-01-13-14-42-37_NP5_Aging30.csv'
+data_file = r'cellvoltages_2022-01-22-12-45-23_NP5_Aging31.csv'
 #data_file2 =r'cellvoltages_2021-09-27-16-08-23-NP5-Aging18_2.csv'
 data_file_path = path + data_file
 #data_file_path_2 = path + data_file2
@@ -173,14 +174,14 @@ data_file_path = path + data_file
 # path to test summary file
 summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP5_test_summary.csv'
 
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Pack 6 ------------------------------
 # path to where raw test csv is stored
 path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP6/'
 
 # name of csv file
-data_file = r'cellvoltages_2022-01-13-14-43-20_NP6_Aging42.csv'
+data_file = r'cellvoltages_2022-01-22-12-41-54_NP6_Aging43.csv'
 data_file_path = path + data_file
 
 # path to test summary file
@@ -200,7 +201,7 @@ data_file_path = path + data_file
 # path to test summary file
 summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP3_test_summary.csv'
 
-getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Calendar Aging ------------------------------
 # path to test summary file
