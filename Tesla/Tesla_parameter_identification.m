@@ -12,8 +12,8 @@ RMSE_all = zeros(length(tests),18); MAE_all = zeros(length(tests),18);
 
 % test = 1;
 %for test=7:length(tests)
-for i =1:1
-    test = 1;
+for test =1:length(tests)
+    %test = 1;
     test_file =fullfile(data_path, tests{test});
 %     data = readmatrix(test_file);
         
@@ -55,11 +55,11 @@ for i =1:1
 %         SOC_f = SOC_f + .95;
 
 
-        figure(4); plot(I); title("HIL Current")
-        figure(5); plot(V); title("HIL Voltage");
+        %figure(4); plot(I); title("HIL Current")
+        %figure(5); plot(V); title("HIL Voltage");
         % figure(6); plot(getSOC(V)/100); title("HIL SOC"); 
-        figure(7); plot(SOC_f,'linewidth',2); title("HIL SOC Calculated"); ylabel("SOC [x100%]")
-        set(gca, 'fontsize', 15)
+        %figure(7); plot(SOC_f,'linewidth',2); title("HIL SOC Calculated"); ylabel("SOC [x100%]")
+        %set(gca, 'fontsize', 15)
         
 %         [R0, Rp, Cp, RMSE, MAE] = ParamID(SOC_f, I, V, t);
         [R0, Rp, Cp, RMSE, MAE] = ParamID_new(SOC_f, I, V, t);
@@ -76,62 +76,62 @@ pos_R0=R0_all*1000;
 low = min(min(pos_R0)); high = max(max(pos_R0));
 ohm_range = high - low;
 
-figure(3); clf; hold on; box on; 
+%figure(3); clf; hold on; box on; 
 for j=1:4
-   subplot(4,1,j); hold on; box on;  
+   %subplot(4,1,j); hold on; box on;  
    for i=(j*4-3):(j*4)
-        plot(pos_R0(:,i), '.-', 'markersize', 20,  ...
-            'linewidth', 2,'displayname',['Channel: ', num2str(i)])
+        %plot(pos_R0(:,i), '.-', 'markersize', 20,  ...
+            %'linewidth', 2,'displayname',['Channel: ', num2str(i)])
    end
-   legend('location', 'eastoutside')
-   ylabel('Resistance [m/Omega]')
-   set(gca, 'fontsize', 15, 'linewidth', 2)
-   title('HIL Channel R0 Progression')
-   ylim([low-ohm_range*.1 high+ohm_range*.1])
+   %legend('location', 'eastoutside')
+   %ylabel('Resistance [m/Omega]')
+   %set(gca, 'fontsize', 15, 'linewidth', 2)
+   %title('HIL Channel R0 Progression')
+   %ylim([low-ohm_range*.1 high+ohm_range*.1])
    
 end
-xlabel('Test Index [-]')
+%xlabel('Test Index [-]')
 
 %%
 low = min(min(Cp_all)); high = max(max(Cp_all));
 ohm_range = high - low;
-figure(4); clf; hold on; box on; 
+%figure(4); clf; hold on; box on; 
 for i=1:18
     if i<9
-        plot(Cp_all(:,i), '.-', 'markersize', 20,  ...
-            'linewidth', 2,'displayname',['Channel: ', num2str(i)])
+        %plot(Cp_all(:,i), '.-', 'markersize', 20,  ...
+            %'linewidth', 2,'displayname',['Channel: ', num2str(i)])
     else
-        plot(Cp_all(:,i), '*-', 'markersize', 8,  ...
-            'linewidth', 2,'displayname',['Channel: ', num2str(i)])
+        %plot(Cp_all(:,i), '*-', 'markersize', 8,  ...
+            %'linewidth', 2,'displayname',['Channel: ', num2str(i)])
     end
 end
-legend('location', 'eastoutside')
-ylabel('Capacitance [Farad]')
-set(gca, 'fontsize', 15, 'linewidth', 2)
-title('HIL Channel Cp Values')
-ylim([low-ohm_range*.1 high+ohm_range*.1])
-xlabel('Test Index [-]')
+%legend('location', 'eastoutside')
+%ylabel('Capacitance [Farad]')
+%set(gca, 'fontsize', 15, 'linewidth', 2)
+%title('HIL Channel Cp Values')
+%ylim([low-ohm_range*.1 high+ohm_range*.1])
+%xlabel('Test Index [-]')
 
 %%
 Rp_all = R0_all*1000;
 low = min(min(Rp_all)); high = max(max(Rp_all));
 ohm_range = high - low;
-figure(4); clf; hold on; box on; 
+%figure(4); clf; hold on; box on; 
 for i=1:18
     if i<9
-        plot(Rp_all(:,i), '.-', 'markersize', 20,  ...
-            'linewidth', 2,'displayname',['Channel: ', num2str(i)])
+        %plot(Rp_all(:,i), '.-', 'markersize', 20,  ...
+            %'linewidth', 2,'displayname',['Channel: ', num2str(i)])
     else
-        plot(Rp_all(:,i), '*-', 'markersize', 8,  ...
-            'linewidth', 2,'displayname',['Channel: ', num2str(i)])
+        %plot(Rp_all(:,i), '*-', 'markersize', 8,  ...
+            %'linewidth', 2,'displayname',['Channel: ', num2str(i)])
     end
 end
-legend('location', 'eastoutside')
-ylabel('Resistance [m\Omega]')
-set(gca, 'fontsize', 15, 'linewidth', 2)
-title('HIL Channel R0 Values')
-ylim([low-ohm_range*.1 high+ohm_range*.1])
-xlabel('Test Index [-]')
+%legend('location', 'eastoutside')
+%ylabel('Resistance [m\Omega]')
+%set(gca, 'fontsize', 15, 'linewidth', 2)
+%title('HIL Channel R0 Values')
+%ylim([low-ohm_range*.1 high+ohm_range*.1])
+%xlabel('Test Index [-]')
 
 %%
 % [R0, Rp, Cp, RMSE, MAE] = ParamID(SOC_f, I, V, t)
@@ -189,34 +189,34 @@ function [R_0, R_p, C_p, RMSE, MAE] = ParamID(SOC_f, I, V, t)
     RMSE=sqrt(sum(error.^2)/length(error)); % mean absolute error of voltage estimation
     MAE=mean(abs(error)); % root mean square error of voltage estimation
     %% plot
-    figure(1)% model parameters 
-    clf;
-    subplot(3,1,1)
-    plot(t/3600,R0,'k','LineWidth',1)
+    %figure(1)% model parameters 
+    %clf;
+    %subplot(3,1,1)
+    %plot(t/3600,R0,'k','LineWidth',1)
 %     ylim([-0.01 0.01]);
-    xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
-    ylabel('R_{0}(\Omega)','Fontname', 'Times new roman','FontSize',8)
-    set(gca, 'Fontname', 'Times new roman', 'Fontsize',8,'LineWidth',1.2); 
-    hold on
-    subplot(3,1,2)
-    plot(t/3600,Rp,'k','LineWidth',1)
+    %xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
+    %ylabel('R_{0}(\Omega)','Fontname', 'Times new roman','FontSize',8)
+    %set(gca, 'Fontname', 'Times new roman', 'Fontsize',8,'LineWidth',1.2); 
+    %hold on
+    %subplot(3,1,2)
+    %plot(t/3600,Rp,'k','LineWidth',1)
 %     ylim([-50 50])
-    xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
-    ylabel('R_{p}(\Omega)','Fontname', 'Times new roman','FontSize',8)
-    set(gca, 'Fontname', 'Times new roman', 'Fontsize',8,'LineWidth',1.2); 
-    hold on
-    subplot(3,1,3)
-    plot(t/3600,Cp,'k','LineWidth',1)
+    %xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
+    %ylabel('R_{p}(\Omega)','Fontname', 'Times new roman','FontSize',8)
+    %set(gca, 'Fontname', 'Times new roman', 'Fontsize',8,'LineWidth',1.2); 
+    %hold on
+    %subplot(3,1,3)
+    %plot(t/3600,Cp,'k','LineWidth',1)
 %     ylim([-5000 50000])
-    xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
-    ylabel('C_{p}(F)','Fontname', 'Times new roman','FontSize',8)
+    %xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
+    %ylabel('C_{p}(F)','Fontname', 'Times new roman','FontSize',8)
 
-    figure(2) % voltage estimation error
-    clf;
-    plot(t/3600,error,'k','LineWidth',1)
+    %figure(2) % voltage estimation error
+    %clf;
+    %plot(t/3600,error,'k','LineWidth',1)
 %     ylim([-0.15 0.15]);
-    xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
-    ylabel('voltage estimation error','Fontname', 'Times new roman','FontSize',8)
+    %xlabel('Time(h)','Fontname', 'Times new roman','FontSize',8)
+    %ylabel('voltage estimation error','Fontname', 'Times new roman','FontSize',8)
 end
 
 function [R0, Rp, Cp, RMSE, MAE] = ParamID_new(SOC_f,I,V,t)
@@ -270,12 +270,12 @@ function [R0, Rp, Cp, RMSE, MAE] = ParamID_new(SOC_f,I,V,t)
     MAE=mean(abs(error))
 
     %% plot
-    figure(1) % voltage estimation error
-    clf;
-    plot(t/3600,error,'k','LineWidth',1)
-    xlabel('Time(h)','FontSize',15)
-    ylabel('voltage estimation error','FontSize',15)
-    set(gca, 'fontsize', 15)
+    %figure(1) % voltage estimation error
+    %clf;
+    %plot(t/3600,error,'k','LineWidth',1)
+    %xlabel('Time(h)','FontSize',15)
+    %ylabel('voltage estimation error','FontSize',15)
+    %set(gca, 'fontsize', 15)
 end
 
 %% FUNCTIONS
@@ -298,10 +298,10 @@ function [Step, Cap, data] = getCellCap(fname)
     Original = textscan(fid, '%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f', 'HeaderLines', 1,'Delimiter',',');
 
     % Data Columns
-    t = Original{:,1};
+    t = Original{:,1}(1:length(Original{:,63}));
     % SOC0 = Original{:,2};
-    Vpack0 = Original{:,3};
-    I0 = Original{:,4};
+    Vpack0 = Original{:,3}(1:length(Original{:,63}));
+    I0 = Original{:,4}(1:length(Original{:,63}));
     % Climit = Original{:,5};
     % Dlimit = Original(:,6);
     % HighCellID = Original{:,7};
@@ -312,24 +312,24 @@ function [Step, Cap, data] = getCellCap(fname)
     % DCHen = Original{:,13};
     % HighT = Original{:,14};
     % LowT = Original{:,15};
-    CV01 = Original{:,16};
-    CV02 = Original{:,17};
-    CV03 = Original{:,18};
-    CV04 = Original{:,19};
-    CV05 = Original{:,20};
-    CV06 = Original{:,21};
-    CV07 = Original{:,22};
-    CV08 = Original{:,23};
-    CV09 = Original{:,24};
-    CV10 = Original{:,25};
-    CV11 = Original{:,26};
-    CV12 = Original{:,27};
-    CV13 = Original{:,28};
-    CV14 = Original{:,29};
-    CV15 = Original{:,30};
-    CV16 = Original{:,31};
-    CV17 = Original{:,32};
-    CV18 = Original{:,33};
+    CV01 = Original{:,16}(1:length(Original{:,63}));
+    CV02 = Original{:,17}(1:length(Original{:,63}));
+    CV03 = Original{:,18}(1:length(Original{:,63}));
+    CV04 = Original{:,19}(1:length(Original{:,63}));
+    CV05 = Original{:,20}(1:length(Original{:,63}));
+    CV06 = Original{:,21}(1:length(Original{:,63}));
+    CV07 = Original{:,22}(1:length(Original{:,63}));
+    CV08 = Original{:,23}(1:length(Original{:,63}));
+    CV09 = Original{:,24}(1:length(Original{:,63}));
+    CV10 = Original{:,25}(1:length(Original{:,63}));
+    CV11 = Original{:,26}(1:length(Original{:,63}));
+    CV12 = Original{:,27}(1:length(Original{:,63}));
+    CV13 = Original{:,28}(1:length(Original{:,63}));
+    CV14 = Original{:,29}(1:length(Original{:,63}));
+    CV15 = Original{:,30}(1:length(Original{:,63}));
+    CV16 = Original{:,31}(1:length(Original{:,63}));
+    CV17 = Original{:,32}(1:length(Original{:,63}));
+    CV18 = Original{:,33}(1:length(Original{:,63}));
     CV1_16 = [CV01 CV02 CV03 CV04 CV05 CV06 CV07 CV08 CV09 CV10 CV11 CV12 CV13 CV14 CV15 CV16 CV17 CV18];
 
     %% Clear extra measurements
@@ -349,7 +349,7 @@ function [Step, Cap, data] = getCellCap(fname)
     CV = CV1_16(transpose(keep),:);
 
     %% Convert timestamps to hours (takes a while)
-    if str2num(fname(end-4))>1 || ~isempty(str2num(fname(end-5)))
+    if  1==1    %str2num(fname(end-4))>1 || ~isempty(str2num(fname(end-5)))||
         for i = 1:length(t0)
             X1 = regexp(t0{i},' ','split');
             X2 = regexp(X1{4},':','split');
@@ -386,7 +386,7 @@ function [Step, Cap, data] = getCellCap(fname)
     EndVs = data(Step(23)-1,4:end); %after pause
 
     %% Convert Voltages to SOH to capcity
-    SOCcurve = xlsread('SOC_curve.xls');
+    SOCcurve = xlsread('TeslaOCVcurve_matt.xls');
     x=SOCcurve(:,1);
     y=SOCcurve(:,2);
     for i = 1:length(StartVs)
