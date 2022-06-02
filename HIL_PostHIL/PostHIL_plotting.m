@@ -2,11 +2,14 @@
 clear all; close all;
 save_plot = true;  % Change to True to save plots
 
-% change this
-outpath = '/Users/quiana/Documents/UCSD/CER/Plots/PostHIL/';  % path that plot should be saved to
+% ---------------------- USER INPUTS ---------------------
+% folder where plots should be saved
+outpath = '/Users/quiana/Documents/UCSD/CER/Plots/PostHIL/'; 
+
+% test summary path
 data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/PostHIL_test_summary.csv");
 
-
+% Reference test summaries: HIL and NP6
 HIL_data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/HIL_test_summary.csv");
 benchmark_data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/NP6/NP6_test_summary.csv");
 
@@ -14,6 +17,7 @@ benchmark_data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Pr
 postHILdata = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/PostHIL_IR_summary.xlsx");
 HILdata = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/HIL_IR_summary.xlsx");
 
+% --------------------------------------------------------
 %% SOH Plots
 % Import data and process
 channelIDs = [1 2 9 10 3 4 11 12 7 6 13 14 5 8 15 16];
@@ -117,8 +121,6 @@ if save_plot
 end
 
 %% Benchmark, HIL, & PostHIL Analysis
-outpath = '/Users/quiana/Documents/UCSD/CER/Plots/PostHIL/';  % path that plot should be saved to
-
 
 % NP6 processing: get cycles, std
 DCH1 = benchmark_data(:,2); DCH2 = benchmark_data(:,3);
