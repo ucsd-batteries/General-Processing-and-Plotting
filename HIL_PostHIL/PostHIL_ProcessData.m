@@ -7,12 +7,16 @@ clear all; close all
 % 
 %  ----------------- USER INPUTS---------------------
 %   - charac_path: path to folder for Characterization test data (leave blank if no Charac Data to process)
-test_path = '/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/HIL/PostHIL/Char4';
+test_path = '/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/HIL/PostHIL/Char16';
 % charac_path = '';
 %   - channelIDs: order of brick IDs (format = brick1, brick2, brick3, brick4)
 channelIDs = [1 2 9 10 3 4 11 12 7 6 13 14 5 8 15 16];
 
-summary_path = '/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/PostHIL_test_summary.csv';
+% summary_path: path to summary spreadsheet
+summary_path = '/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/postHIL_test_summary.csv';
+
+% SOCcurve: read in SOC-OCV data 
+SOCcurve = xlsread('/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/SOC_curve.xls');
 % ------------------------------------------------------
 %
 
@@ -91,7 +95,6 @@ for c=1:length(channels)
 end
 
 %% Step 2: Convert Voltages to SOC
-SOCcurve = xlsread('SOC_curve.xls');
 x=SOCcurve(:,1);
 y=SOCcurve(:,2);
 SOCstart = zeros(size(StartVs));
@@ -134,15 +137,15 @@ for i =1:length(SOCstart)
    Cap(i) = (100/(SOCstart(i)-SOCend(i)))*CapDch(i); %Capacity
 end
 
-%% Step 4: Calculate brick cycles and days
-% brick cycles = max(cycles per channel)
-Charac_ah = zeros(1,4);
-Charac_days = zeros(1,4);
-for i=1:4
-    ids = channelIDs(4*i-3:4*i);
-    Charac_ah(i) = max(DCH2(ids)+DCH1(ids));
-    Charac_days(i) = max(days(ids));
-end
+% %% Step 4: Calculate brick cycles and days
+% % brick cycles = max(cycles per channel)
+% Charac_ah = zeros(1,4);
+% Charac_days = zeros(1,4);
+% for i=1:4
+%     ids = channelIDs(4*i-3:4*i);
+%     Charac_ah(i) = max(DCH2(ids)+DCH1(ids));
+%     Charac_days(i) = max(days(ids));
+% end
 
 %% Combine all data into one table
 
