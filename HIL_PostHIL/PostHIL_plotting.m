@@ -1,7 +1,21 @@
-%% Nissan HIL Report Plots
+
 clear all; close all;
-% Import data and process
+save_plot = true;  % Change to True to save plots
+
+% change this
+outpath = '/Users/quiana/Documents/UCSD/CER/Plots/PostHIL/';  % path that plot should be saved to
 data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/PostHIL_test_summary.csv");
+
+
+HIL_data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/HIL_test_summary.csv");
+benchmark_data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/NP6/NP6_test_summary.csv");
+
+% IR summary datasets
+postHILdata = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/PostHIL_IR_summary.xlsx");
+HILdata = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/HIL_IR_summary.xlsx");
+
+%% SOH Plots
+% Import data and process
 channelIDs = [1 2 9 10 3 4 11 12 7 6 13 14 5 8 15 16];
 ID1=channelIDs(1:4);     ID2=channelIDs(5:8);   
 ID3=channelIDs(9:12);    ID4=channelIDs(13:16);
@@ -41,31 +55,29 @@ for b=1:4
     soh_std(:,b) = std(SOH(:,ids),0,2);
 end
 
-%% PLOTS FOR INTERNAL REPORT
 
-save_plot = true;  % Change to True to save plots
-outpath = '/Users/quiana/Documents/UCSD/CER/Plots/PostHIL/';  % path that plot should be saved to
+%% SOH vs Cycle Count
 
 % Plot SOH vs cycle count
 min_soh = min(min(SOH)); max_soh = max(max(SOH));
 range = max_soh-min_soh; low = min_soh - range/10; high = max_soh + range/10;
 
-fig = figure(1); clf; hold on
-set(gcf, 'Position',  [100, 100, 1100, 650]);
+fig = figure(1); clf; 
+set(gcf, 'Position',  [100, 100, 1350, 650]);
 for j=1:4
     ids = IDs(j,:);
-    soh = SOH(:,ids);       % get soh for this brick
+    soh_temp = SOH(:,ids);       % get soh for this brick
     cycs = cycles(:,ids);   % get cycles for this brick
-    for i=1:size(soh,2)
-        subplot(4,1,j); 
+    for i=1:size(soh_temp,2)
+        subplot(2,2,j); hold on; grid on
         title(['Brick', ' ', num2str(j), ': Cycle ', num2str(floor(brick_cycles(end,j)))]); 
         hold on; box on;
-        plot(cycs(:,i), soh(:,i),'.-','markersize', 18, ...
+        plot(cycs(:,i), soh_temp(:,i),'.-','markersize', 18, ...
             'displayname', ['Cell', ' ', num2str(ids(i))],'linewidth',2);
         xlim([0 max(max(cycles))])
         legend('location', 'eastoutside', 'fontsize', 15);
         set(gca, 'fontsize', 15); ylim([low high]);
-        if j==4; xlabel("Cycle Count [-]"); end
+        if j>2; xlabel("Cycle Count [-]"); end
     end
 end
 chart=axes(fig,'visible','off');  
@@ -97,7 +109,6 @@ for i=1:4
     legend('location', 'northeast'); xlabel('Time [days]');
     set(gca,'fontsize', 15);
 end
-sgtitle('Nissan Cycling Aging from HIL Testing','fontweight','bold', 'fontsize', 15) 
 
 % ----- Save plot ------
 if save_plot
@@ -106,13 +117,8 @@ if save_plot
 end
 
 %% Benchmark, HIL, & PostHIL Analysis
-clc
-
-save_plot = true;  % Change to True to save plots
 outpath = '/Users/quiana/Documents/UCSD/CER/Plots/PostHIL/';  % path that plot should be saved to
 
-HIL_data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/HIL/HIL_test_summary.csv");
-benchmark_data = readmatrix("/Users/quiana/Documents/UCSD/CER/Data_Processing/Processing/Nissan/NP6/NP6_test_summary.csv");
 
 % NP6 processing: get cycles, std
 DCH1 = benchmark_data(:,2); DCH2 = benchmark_data(:,3);
@@ -130,7 +136,7 @@ benchmark_std = zeros(size(benchmark_data,1),4);
 benchmark_std_norm = zeros(size(benchmark_data,1),4);
 benchmark_std_pD = zeros(size(benchmark_data,1),4);
 for b=1:4
-    ids = cell_i(b*4-3:b*4);
+    ids = cell_i(5:8);
     benchmark_cap(:,b) = mean(benchmark_cellCaps(:,ids),2);
     benchmark_soh(:,b) = benchmark_cap(:,b)/RatedCap*100;
     benchmark_std(:,b) = std(benchmark_cellCaps(:,ids),0,2);
@@ -156,7 +162,7 @@ HIL_std_norm = zeros(size(HIL_data,1),4);
 HIL_std_pD = zeros(size(HIL_data,1),4);
 for b=1:4
     ids = channelIDs(b*4-3:b*4)
-    HIL_cap(:,b) = mean(HIL_cellCaps(:,ids),2)
+    HIL_cap(:,b) = mean(HIL_cellCaps(:,ids),2);
     HIL_soh(:,b) = HIL_cap(:,b)/RatedCap*100;
     HIL_std(:,b) = std(HIL_cellCaps(:,ids),0,2);
     HIL_std_norm(:,b) = HIL_std(:,b)/max(HIL_std(:,b));
@@ -242,7 +248,8 @@ cents = [.495, .485, .548, .553];
 
 % raw plotting
 for b = 1:4
-    figure(b+2); clf; hold on; box on;
+    figure(2+b); clf; hold on; box on;
+    set(gcf,'Position',[50 550 500 330])
     b1 = plot(benchmark_cycles, benchmark_soh(:,b),'displayname', 'Benchmark SOH','linewidth', 2, 'color', colors(1,:));
     h1 = plot(HIL_cycles(:,b), HIL_soh(:,b), 'displayname', 'HIL SOH','linewidth', 2, 'color', colors(2,:));
     ylabel('State of Health [%]')
@@ -261,9 +268,9 @@ for b = 1:4
     [low, high] = low_high(benchmark_std(:,b), HIL_std(:,b));
     ylim([low, high])
     xlim([0, 650])
-    l = legend([b1, b2, h1, h2], 'Benchmark SOH', 'Benchmark Std', 'HIL SOH', 'HIL Std', ...
-        'location', 'southoutside', 'orientation', 'horizontal', 'numcolumns', 2);
     title(['Benchmark vs HIL Brick ' num2str(b)])
+    l = legend([b1, b2, h1, h2], 'Benchmark SOH', 'Benchmark Std', 'HIL SOH', 'HIL Std', ...
+    'location', 'southoutside', 'orientation', 'horizontal', 'numcolumns', 2);
     xlabel('Cycle Count [-]')
     set(gca, 'linewidth', 2, 'fontsize', 12)
     plot_name = strcat("Brick", num2str(b), " raw.png");
@@ -320,7 +327,40 @@ end
 %     plot_name = strcat("Brick", num2str(b), " ppt.png");
 % end
 
+%% IR Plot
 
+P_IR = postHILdata(:,2:17);
+H_IR = HILdata(:,2:17);
+IR = [H_IR;P_IR];
+
+% EOL IR threshold
+cutoff=2*max(IR(1,:));
+
+figure(7); clf; hold on; box on; grid on
+set(gcf,'Position',[50 550 1100 400])
+for i=1:16
+    plot(IR(:,i), 'linewidth', 1.5, 'displayname', strcat('Cell', num2str(i)))
+end
+yline(cutoff,'-k','linewidth',1.5,'displayname','200% IR Threshold')
+xline(13.5,':k', 'LineWidth', 2, 'displayname', 'Balancing Removal');
+low = min(min(IR))*.75; high = cutoff*1.05;
+text(13.5,low*1.2," No Balancing",'FontSize',12,'HorizontalAlignment','left')
+text(13.5,low*1.2,"Balancing ",'FontSize',12,'HorizontalAlignment','right')
+text(size(IR,1)*.75,cutoff*.98,"200% IR Threshold ",'FontSize',12,'HorizontalAlignment','right')
+legend('Location','eastoutside')
+xlabel('Test Number [-]')
+ylim([low high])
+ylabel('Cell Internal Resistance')
+title("Cell Internal Resistance for Each Test")
+set(gca, 'fontsize', 12, 'linewidth', 2)
+
+% ----- Save plot ------
+if save_plot
+    plot_name = strcat(outpath, strcat('PostHL IR.png'));
+    exportgraphics(gcf, plot_name, 'Resolution', 1000);
+end
+
+%%
 function [low, high] = low_high(max_vec, min_vec)
     min_std = min(min(min_vec)); max_std = max(max(max_vec));
     range = max_std-min_std; low = min_std - range/4; high = max_std + range/10;
