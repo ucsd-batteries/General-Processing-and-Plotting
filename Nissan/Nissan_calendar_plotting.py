@@ -69,3 +69,27 @@ if save_plot: plt.savefig(outpath + 'Nissan Calendar Pack Comparison.jpg', bbox_
 
 
 plt.show()
+
+
+# --------------------------- normalized pack comparison ----------------------------------
+
+fs = 15     # universal fontsize
+outpath = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/plots/'    # path for saving plot
+fig, ax = plt.subplots(figsize=(12,6))
+for i in range(4):
+    if i in fewerCharList:
+        ax.plot(days[i][0:-1], avg_soh[i][0] - avg_soh[i][0:-1], label=pack_names[i] + ' ' + charge_levels[i], marker='.', markersize=12) #does not graph the last characterization if there are fewwer characterizations
+    else:
+        ax.plot(days[i], avg_soh[i][0] -avg_soh[i], label=pack_names[i] + ' ' + charge_levels[i], marker='.', markersize=12)
+
+ax.set_title('Nissan Calendar Aging Pack Comparison', fontsize=fs)
+ax.set_ylabel('Pack Average SOH Drop [%]', fontsize=fs)
+ax.set_xlabel('Time Elapsed [days]', fontsize=fs)
+ax.tick_params(direction='in')
+#plt.ylim([0,10])
+ax.legend()
+if save_plot: plt.savefig(outpath + 'Nissan Calendar Pack Comparison Normalized.jpg', bbox_inches='tight', dpi=1000)
+
+
+
+plt.show()
