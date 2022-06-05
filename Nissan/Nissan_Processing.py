@@ -50,9 +50,11 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
 
     # get StartVs, EndVs 
     if has_headers:
+        offset =0 #if bms data is non standard
+        offset2 =0
         # change start_idx and end_idx as needed: originally 16 and 22 (16+6), respectively
-        start_idx = 16
-        end_idx = start_idx + 6
+        start_idx = 16-offset
+        end_idx = start_idx + 6 - offset2
         StartVs = cell_voltages[int(Step[start_idx]-1),:]  # get the voltage at the height of the CCCV curve after constant voltage
         EndVs = cell_voltages[int(Step[end_idx]-1),:];  # get the voltage at the end of the CCCV curve after constant current discharge
     else:
@@ -91,7 +93,7 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
             ahDch[i+1] = ahDch[i] + .5*(tmstmp[i+2]-tmstmp[i+1])*(Ipack[i+2]+Ipack[i+1]) #trapezoidal integration
         else: 
             ahDch[i+1] = ahDch[i]
-    DCH1 = ahDch[int(Step[16])] #what is this?? --> how much was discharged up until the vs point
+    DCH1 = ahDch[int(Step[start_idx])] #what is this?? --> how much was discharged up until the vs point
     #dch2 is then the discharge amount agter that
     
 # ahdch is the total discharged over the whole graph
@@ -113,17 +115,13 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     test_name = data_file_path.split('_')
     test_name = test_name[-2] +'-' + test_name[-1].split('.')[0]
     
-    #Internal resistance
-    eng = matlab.engine.start_matlab()
-    eng.NP6_parameter_identification(nargout=0)
-    R0 = np.sum(eng.workspace["R0_all"])    #use R0_all for all of the cell resistances and either sum or average them
-    #R0 = 0
+
 
     if isCalendarAging: 
         # get NP number
         x = re.findall("NP\d", data_file_path)
         NPname = x[-1]
-        NPname = "NP12"    #change based on what pack you are processing
+        NPname = "NP7"    #change based on what pack you are processing
         # import summary from correct sheet name
         summary = pd.read_excel(summary_file, sheet_name=NPname)
         test_name = 'char ' + str(summary.shape[0]+1)
@@ -144,9 +142,110 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
         summary.to_excel(writer, NPname, index=False)
         writer.save()
     else: 
+        #Internal resistance
+        drive_cycle_start = Step[25]
+        drive_cycle_end = len(data)-1
+        
+        #remove first and last 10% of data
+        t1 = int(0.1*(drive_cycle_end-drive_cycle_start))+int(drive_cycle_start)
+        t2 = drive_cycle_end- int(0.1*(drive_cycle_end-drive_cycle_start))
+        t = tmstmp[t1:t2]
+        
+        drive_cyc_cell_v = cell_voltages[t1:t2]
+        drive_cyc_cell_i = Ipack[t1:t2]
+        
+        def ParamID(SOC_f,drive_cyc_cell_i,V,t):
+            p = np.polyfit(soc/100,ocv,9) #fit OCV-SOC model with a 9-degree Power function polynomial. This degree is determined by a comprehensive comparison of the calculation and accuracy of polynomials with different degrees
+            p = np.poly1d(p)
+            N = len(t) # the data length
+            '''The Thevenin battery model is applied to depict the battery's dynamic characteristics.
+            Thus, Rp, Cp, R0 represents the polarization resistance, polarization capacitance, 
+            the equivalent ohmic resistance, respectively.'''
+            z = np.zeros((N,1)) #observation vector
+            Phi = np.zeros((N-1,3)) #input and output sequences
+            dt = 1 #sampling interval
+            Up = np.zeros((1,N+1)) #Up means the polarization voltage. 
+            error = np.zeros((1,N)) #voltage estimation error
+            Lambda=1;# the forgetting factor, and its value usually from 0.95 to 1.The smaller the Â¦Ã‹, the stronger the tracking ability, but the greater the fluctuation.
+            for i in range(N):
+                if i== 0:
+                    #observation vector=[OCV - measurement battery voltage]
+                    z[i] = (p(SOC_f[0,i])-V[i])*Lambda**(N-i)
+                else:
+                    z[i] = (p(SOC_f[0,i])-V[i])*Lambda**(N-i)
+                    #input and output sequences
+                    Phi[i-1,:] = Lambda**(N-i)*np.array([z[i-1],drive_cyc_cell_i[i],drive_cyc_cell_i[i-1]])
+            
+                    
+            #Parameter identification with RLS
+            '''Theta indicates the parameters to be identified. These are the parameters 
+             in the recursive least square (RLS) method instead of the battery parameters.  '''
+            Theta = np.matmul(  np.matmul(  np.linalg.inv(np.matmul(np.transpose(Phi),Phi)),  np.transpose(Phi)),z[1:N])
+            R0 = (Theta[1]-Theta[2])/(1+Theta[0])
+            Rp = 2*(Theta[0]*Theta[1]+Theta[2])/((1-Theta[0])*(1+Theta[0]))
+            Cp = (1+Theta[0])**2*dt/(4*(Theta[0]*Theta[1]+Theta[2]))
+
+            
+            
+            #calculate voltage estimation error
+            A = np.exp(-dt/(Rp*Cp))
+            B = Rp * (1-np.exp(-dt/(Rp*Cp)))
+            for j in range(N):
+                Up[0,j+1] = A*Up[0,j]+B*drive_cyc_cell_i[j] #update Up
+                error[0,j] = p(SOC_f[0,j])-Up[0,j+1]-int(R0)*drive_cyc_cell_i[j]-V[j] #calculate voltage estimation error according to the Thevenin battery model and OCV-SOCC model
+                
+            # mean absolute error of voltage estimation
+            RMSE = np.sqrt(np.sum(error**2)/len(error))
+            #root mean square error of voltage estimation
+            MAE = np.mean(np.abs(error))
+            
+            
+            return [R0,Rp,Cp,RMSE,MAE]
+            
+        
+        R0_all = np.zeros((1,cell_num))
+        Rp_all = np.zeros((1,cell_num))
+        Cp_all = np.zeros((1,cell_num))
+        RMSE_all = np.zeros((1,cell_num))
+        MAE_all = np.zeros((1,cell_num))
+        for cell in range(cell_num):
+            # get current, voltage, and SOC
+            V = drive_cyc_cell_v[:,cell]
+            cap = Cap[cell]
+            
+            #integrate current
+            ah = np.zeros((1,len(drive_cyc_cell_i)))
+            for i in range(1,len(drive_cyc_cell_i)):
+                ah[0,i] = ah[0,i-1]-.5*(t[i]-t[i-1])*(drive_cyc_cell_i[i]+drive_cyc_cell_i[i-1])
+                
+                
+            SOC_f = ah/cap
+            SOC_f = SOC_f + (abs(0.99-np.max(SOC_f)))
+            [R0,Rp,Cp,RMSE,MAE] = ParamID(SOC_f,drive_cyc_cell_i,V,t)
+            print(R0)
+            
+
+            
+            
+            
+            R0_all[0,cell] =  R0
+            Rp_all[0,cell] = Rp
+            Cp_all[0,cell] = Cp
+            RMSE_all[0,cell] = RMSE
+            MAE_all[0,cell] = MAE
+        R0_std = np.std(R0_all)
+        
+        
+        '''
+        R0_all = 16*[0]
+        R0 = 0
+        R0_std = 0
+        #R0 = 0
+        #R0_all = data.iloc[-1,31:31+16]
+        '''
         # import summary csv, append new summary, save as csv
         summary = pd.read_csv(summary_file)
-        summary_updated = np.concatenate([np.array([test_name, DCH1, DCH2]), Cap,np.array([np.mean(Cap/rated_cap)]),np.array([R0])])
+        summary_updated = np.concatenate([np.array([test_name, DCH1, DCH2]), Cap,np.array([np.mean(Cap/rated_cap)]),np.array([np.sum(R0_all),np.std(np.mean(data.iloc[int(Step[start_idx]):int(Step[start_idx+1]),15:31])),R0_std]),np.squeeze(R0_all)])
         summary.loc[len(summary)] = summary_updated
         summary.to_csv(summary_file, index=False, encoding='utf-8-sig')
 
@@ -166,7 +265,7 @@ cc = 20
 path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP5/'
 
 # name of csv file
-data_file = r'cellvoltages_2022-01-22-12-45-23_NP5_Aging31.csv'
+data_file = r'cellvoltages_2022-05-19-12-31-37_NP5_Aging42-3.csv'
 #data_file2 =r'cellvoltages_2021-09-27-16-08-23-NP5-Aging18_2.csv'
 data_file_path = path + data_file
 #data_file_path_2 = path + data_file2
@@ -174,20 +273,20 @@ data_file_path = path + data_file
 # path to test summary file
 summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP5_test_summary.csv'
 
-getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Pack 6 ------------------------------
 # path to where raw test csv is stored
 path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP6/'
 
 # name of csv file
-data_file = r'cellvoltages_2022-01-22-12-41-54_NP6_Aging43.csv'
+data_file = r'cellvoltages_2022-05-19-12-31-10_NP6_Aging52-2.csv'
 data_file_path = path + data_file
 
 # path to test summary file
 summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP6_test_summary.csv'
 
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 
 # ------------------------------------ Nissan Pack 3 ------------------------------
@@ -211,29 +310,29 @@ summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong
 path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/Calendar/'
 
 # NP7
-data_file = r'cellvoltages_2021-12-09-09-34-49_NP7_100.csv'
+data_file = r'cellvoltages_2022-03-11-11-45-55_NP7_100_char.csv'
 data_file_path = path + 'NP7/' + data_file
 
-
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)     #uncomment for calendar aging
 
 # NP9
-data_file = r'cellvoltages_2021-12-10-14-17-27_NP9_75 (1).csv'
+data_file = r'cellvoltages_2022-03-13-13-23-51_NP9_75.csv'
 data_file_path = path + 'NP9/' + data_file
 
 
 
 # NP10
-data_file = r'cellvoltages_2021-12-13-13-33-22_NP10_90.csv'
+data_file = r'cellvoltages_2022-03-14-16-12-25_NP10_90_char.csv'
 data_file_path = path + 'NP10/' + data_file
 
 
+
 # NP12
-data_file = r'cellvoltages_2022-01-09-13-48-49_NP12_50_Char3.csv'
+data_file = r'cellvoltages_2022-05-11-17-33-13_NP12_50_char4.csv'
 data_file_path = path + 'NP12/' + data_file
 #data_file2 =r'cellvoltages_2021-12-12-16-27-08_NP12_50_2.csv'
 #data_file_path_2 = path +'NP12/' + data_file2
 
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)     #uncomment for calendar aging
 
 
 
