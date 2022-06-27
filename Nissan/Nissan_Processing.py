@@ -5,7 +5,7 @@ import os
 import matplotlib.pyplot as plt
 import re
 from openpyxl import load_workbook
-import matlab.engine #look at matlab documentation to install this module
+# import matlab.engine #look at matlab documentation to install this module
 
 def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=False):
     # This function imports raw test data, calculates test results (discharge amp hours and cell capacites), 
@@ -251,7 +251,7 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
 
 # ------------------------------------ General Nissan Info ------------------------------
 # path to OCV-SOC csv file
-soc_curve_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/SOC_curve.csv'
+soc_curve_file = 'SOC_curve.csv'
 
 # number of total cells in test (3 modules each with 6 cells)
 cell_num = 16     
@@ -262,31 +262,29 @@ cc = 20
 # ------------------------------------ Nissan Pack 5 ------------------------------
 # path to where raw test csv is stored
 #r is like a backslash in other programs where it ignores what comes after the r' and treats it like text instead of a command
-path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP5/'
+path = './'
 
 # name of csv file
-data_file = r'cellvoltages_2022-05-19-12-31-37_NP5_Aging42-3.csv'
-#data_file2 =r'cellvoltages_2021-09-27-16-08-23-NP5-Aging18_2.csv'
+# data_file = 'cellvoltages_2022-05-19-12-31-37_NP5_Aging42-3.csv'
 data_file_path = path + data_file
-#data_file_path_2 = path + data_file2
 
 # path to test summary file
-summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP5_test_summary.csv'
+summary_file = 'NP5_test_summary.csv'
 
 #getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Pack 6 ------------------------------
 # path to where raw test csv is stored
-path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP6/'
+path = './'
 
 # name of csv file
-data_file = r'cellvoltages_2022-05-19-12-31-10_NP6_Aging52-2.csv'
+# data_file = 'cellvoltages_2022-05-19-12-31-37_NP5_Aging42-3.csv'
 data_file_path = path + data_file
 
 # path to test summary file
-summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP6_test_summary.csv'
+summary_file = 'NP5_test_summary.csv'
 
-getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 
 # ------------------------------------ Nissan Pack 3 ------------------------------
