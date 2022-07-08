@@ -1,0 +1,9 @@
+name: battery
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - matplotlib
+  - openpyxl
+  - ipykernel
