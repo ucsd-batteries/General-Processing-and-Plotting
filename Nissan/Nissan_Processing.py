@@ -1,3 +1,4 @@
+from itertools import cycle
 import numpy as np
 import pandas as pd
 import datetime as dt
@@ -12,7 +13,6 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
     # and then appends the test results to an ongoing summary file
     
     # import data
-    #data = pd.read_csv(data_file_path)
     data = pd.read_csv(data_file_path, error_bad_lines=False)
     #data2= pd.read_csv(data_file_path_2,error_bad_lines=False)     # use these lines to concatenate data if it was split in two parts  also have to make second file path at the bottom
     #data = data.append(data2)
@@ -63,15 +63,17 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
 
     # ---- Plotting in case results are defective ------- 
     # fig, ax = plt.subplots()
+    # # end_index = 300000
     # ax.plot(Ipack, label='current')
-    # ax.plot(cell_voltages[:,0], label='voltage')
+    # ax.plot(cell_voltages[:, 0], label='voltage')
     # dots = [Ipack[int(s)] for s in Step]
     # ax.scatter(Step, dots, color='red')
     # ax.scatter(Step[start_idx], StartVs[0], color='black')
     # ax.scatter(Step[end_idx], EndVs[0], color='black')
     # ax.legend()
     # plt.show()
-
+    # return
+    # ----------------------------------------------------
 
     # interpolate OCV-SOC curve to get SOCstart and SOCend values corresponding to StartVs and EndVs
     soc_curve = pd.read_csv(soc_curve_file)
@@ -119,12 +121,12 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
 
     if isCalendarAging: 
         # get NP number
-        x = re.findall("NP\d", data_file_path)
-        NPname = x[-1]
-        NPname = "NP7"    #change based on what pack you are processing
+        NPname = re.findall("NP[0-9]+", data_file_path)[-1]
+        print(f"Processing Calendar Aging {NPname}")
+
         # import summary from correct sheet name
         summary = pd.read_excel(summary_file, sheet_name=NPname)
-        test_name = 'char ' + str(summary.shape[0]+1)
+        test_name = 'Characterization ' + str(summary.shape[0]+1)
         # get end_date
         end_date = datetime_object[-1]
         # get days_elapsed
@@ -244,6 +246,7 @@ def getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isC
         #R0_all = data.iloc[-1,31:31+16]
         '''
         # import summary csv, append new summary, save as csv
+
         summary = pd.read_csv(summary_file)
         summary_updated = np.concatenate([np.array([test_name, DCH1, DCH2]), Cap,np.array([np.mean(Cap/rated_cap)]),np.array([np.sum(R0_all),np.std(np.mean(data.iloc[int(Step[start_idx]):int(Step[start_idx+1]),15:31])),R0_std]),np.squeeze(R0_all)])
         summary.loc[len(summary)] = summary_updated
@@ -265,26 +268,26 @@ cc = 20
 path = './'
 
 # name of csv file
-# data_file = 'cellvoltages_2022-05-19-12-31-37_NP5_Aging42-3.csv'
+data_file = 'cellvoltages_2022-06-23-16-17-41_NP5_Aging45failed.csv'
 data_file_path = path + data_file
 
 # path to test summary file
 summary_file = 'NP5_test_summary.csv'
 
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+# getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Pack 6 ------------------------------
 # path to where raw test csv is stored
 path = './'
 
 # name of csv file
-# data_file = 'cellvoltages_2022-05-19-12-31-37_NP5_Aging42-3.csv'
+data_file = 'cellvoltages_2022-06-13-17-20-38_NP6_Char14.csv'
 data_file_path = path + data_file
 
 # path to test summary file
-summary_file = 'NP5_test_summary.csv'
+summary_file = 'NP6_test_summary.csv'
 
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
+# getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 
 # ------------------------------------ Nissan Pack 3 ------------------------------
@@ -302,37 +305,33 @@ summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong
 
 # ------------------------------------ Nissan Calendar Aging ------------------------------
 # path to test summary file
-summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/Calendar_Processed_Data.xlsx'
+summary_file = 'Calendar_Processed_Data.xlsx'
 
 # path to where raw test csv is stored
-path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/Calendar/'
+path = './calendar_aging_data'
 
-# NP7
-data_file = r'cellvoltages_2022-03-11-11-45-55_NP7_100_char.csv'
-data_file_path = path + 'NP7/' + data_file
-
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)     #uncomment for calendar aging
-
-# NP9
-data_file = r'cellvoltages_2022-03-13-13-23-51_NP9_75.csv'
-data_file_path = path + 'NP9/' + data_file
+for file in os.listdir(path):
+    calendar_data_path = os.path.join(path, file)
+    if os.path.isfile(calendar_data_path):
+        getAhAndCaps(calendar_data_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)
+    # TODO: move the processed files from path to ./calendar_aging_data/processed
 
 
-
-# NP10
-data_file = r'cellvoltages_2022-03-14-16-12-25_NP10_90_char.csv'
-data_file_path = path + 'NP10/' + data_file
-
-
-
-# NP12
-data_file = r'cellvoltages_2022-05-11-17-33-13_NP12_50_char4.csv'
-data_file_path = path + 'NP12/' + data_file
-#data_file2 =r'cellvoltages_2021-12-12-16-27-08_NP12_50_2.csv'
-#data_file_path_2 = path +'NP12/' + data_file2
+summary_file = './NP5_test_summary.csv'
+path = './cycle_aging_data'
+for file in os.listdir(path):
+    cycle_data_path = os.path.join(path, file)
+    print("Processing", cycle_data_path)
 
 
-
+    if os.path.isfile(cycle_data_path):
+        pack_num = re.findall("NP[0-9]+", cycle_data_path)[-1]
+        print(pack_num)
+        getAhAndCaps(cycle_data_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=False) 
+        print("Moving", path, "to", os.path.join(path, 'processed', file))
+        os.rename(cycle_data_path, os.path.join(path, 'processed', file))
+    else:
+        print("Skipping", cycle_data_path)
 
 # ------------------------- For Processing Multiple Files ---------------------
 # folder = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Nissan/NP6/csvs/'
