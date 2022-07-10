@@ -5,16 +5,14 @@ from numpy.lib.function_base import append
 import pandas as pd
 import datetime as dt
 
+"""Plots the processed data in line graphs to show battery degradation"""
 
-
-summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/Calendar_Processed_Data.xlsx'
+summary_file = './Calendar_Processed_Data.xlsx'
 
 save_plot = True   # Change to True to save plot as .png
 
 pack_names = ['NP7', 'NP9', 'NP10', 'NP12']
-#pack_names = ['NP9','NP12']
 charge_levels = ['100%', '75%', '90%', '50%']
-#charge_levels = ['75%','50%']
 legend_loc = 'lower left'
 rated_cap = 56.3
 
@@ -50,7 +48,8 @@ for i, pack in enumerate(pack_names):
 
 #  ---------------------------- Pack Comparison ----------------------------
 fs = 15     # universal fontsize
-outpath = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/plots/'    # path for saving plot
+outpath = './plots/'    # path for saving plot
+
 fig, ax = plt.subplots(figsize=(12,6))
 for i in range(4):
     if i in fewerCharList:
@@ -73,8 +72,6 @@ plt.show()
 
 # --------------------------- normalized pack comparison ----------------------------------
 
-fs = 15     # universal fontsize
-outpath = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/plots/'    # path for saving plot
 fig, ax = plt.subplots(figsize=(12,6))
 for i in range(4):
     if i in fewerCharList:
@@ -86,10 +83,8 @@ ax.set_title('Nissan Calendar Aging Pack Comparison', fontsize=fs)
 ax.set_ylabel('Pack Average SOH Drop [%]', fontsize=fs)
 ax.set_xlabel('Time Elapsed [days]', fontsize=fs)
 ax.tick_params(direction='in')
-#plt.ylim([0,10])
 ax.legend()
-if save_plot: plt.savefig(outpath + 'Nissan Calendar Pack Comparison Normalized.jpg', bbox_inches='tight', dpi=1000)
-
-
+if save_plot: 
+    plt.savefig(outpath + 'Nissan Calendar Pack Comparison Normalized.jpg', bbox_inches='tight', dpi=1000)
 
 plt.show()
