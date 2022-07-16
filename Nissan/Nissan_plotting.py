@@ -6,6 +6,8 @@ import datetime as dt
 
 rated_cap = 56.3
 
+# TODO: make sure the data values in the table is to the same sig figs (formatting)
+
 def calc_cycles(summary_file):
     """Calculate the number of cycles that the battery has gone through"""
     global rated_cap 
@@ -99,7 +101,6 @@ def SOH_Summary(summary_file, pack_name, legend_loc='lower right', save_plot=Fal
         plt.savefig(outpath + test_names[-1] + ' SOH Summary.jpg', bbox_inches='tight', dpi=1000)
 
 
-
 def IR_Summary(summary_file, pack_name, legend_loc='lower right', save_plot=False, outpath=None):
     # ---------------------------- import data from summary spreadsheet ---------------------------- 
     summary_data = pd.read_csv(summary_file)
@@ -182,63 +183,114 @@ def IR_Summary(summary_file, pack_name, legend_loc='lower right', save_plot=Fals
     if save_plot: 
         plt.savefig(outpath + latest_test_name + ' Internal Resistance Summary.jpg', bbox_inches='tight', dpi=1000)
 
+# TODO: organize these into classes
+
+def get_testing_stats(csv: str):
+    """
+    Parses testing progress stats from csv.
+
+    Returns: 
+    - average days for each test cycle
+    - total number of days delayed
+    """
+    # data cleaning
+    df = pd.read_csv(csv)
+
+    # extract data and summarize
+    avg_test_cycle_days = np.average(df['Total Days of Test Cycle (1 Drive Cycle + 4 Aging)'].dropna())
+    total_days_delayed = np.sum(df['Delay in Testing'])
+
+    return avg_test_cycle_days, total_days_delayed
+
+def est_end_date(cycles, days_per_normal_test_cycle, delay, estimation_method='avg'):
+    """ 
+    days_per_normal_test_cycle: estimate this from testing progress spreadsheet on drive
+    # delay: accumulate delays (from testing progress spreadsheet) 
+    """
+    if estimation_method == 'avg':
+        # estimate cycles per test cycle using averages
+        cycle_counts = []
+        i = len(cycles) - 1
+        while i - 5 > 0:
+            cycle_counts.append(cycles[i] - cycles[i-5])
+            i -= 5
+        cycles_per_normal_test_cycle = np.average(cycle_counts)
+    elif estimation_method == 'last':
+        # estimate cycles per test cycle using the most recent test cycle 
+        cycles_per_normal_test_cycle = cycles[-1] - cycles[-6] # one cycle is 5 cells in the summary sheet
+    
+    cycles_per_day = cycles_per_normal_test_cycle / days_per_normal_test_cycle
+    cycles_remaining = np.ceil((6*365)-cycles[-1])
+    days_remaining = cycles_remaining / cycles_per_day + delay
+    end_date = dt.datetime.now() + dt.timedelta(days=days_remaining)
+    return end_date
 
 
 def gantt_chart(NP5_cycles, NP6_cycles, save_plot=False, outpath=None):
-
-    task = ['Nissan Pack 3', 'Nissan Pack 6', 'Nissan Pack 5']
+    print("\n", "="*10, "Nissan Cycle Aging Progress Report", "="*10)
+    pack_name = ['Nissan Pack 3', 'Nissan Pack 6', 'Nissan Pack 5']
     status = ['Terminated', 'In Progress', 'In Progress']   # testing status for NP3, NP6, NP5; respectively
     progress = [463/2190, NP6_cycles[-1]/2190, NP5_cycles[-1]/2190] # NP3, NP5, NP6
+    print(f"Cycle count:\n - NP6: {NP6_cycles[-1]:.0f} / 2190\n - NP5: {NP5_cycles[-1]:.0f} / 2190")
 
-    # estimate end date
-    def est_end_date(cycles, days_per_normal_test_cycle, delay):
-        # days_per_normal_test_cycle: estimate this from testing progress spreadsheet on drive
-        # delay: accumulate delays (from testing progress spreadsheet)
-        cycles_per_normal_test_cycle = cycles[-1] - cycles[-1-5]
-        cycles_per_day = cycles_per_normal_test_cycle/days_per_normal_test_cycle
-        cycles_remaining = np.ceil((6*365)-cycles[-1])
-        days_remaining = cycles_remaining/cycles_per_day+delay
-        end_date = dt.datetime.now() + dt.timedelta(days=days_remaining)
-        return end_date
+    # estimate end date based on the number of days a normal test cycle would take + delayed days
+    np5_avg_days, np5_delay = get_testing_stats('Testing Progress Tracker - Nissan Pack 5 (B).csv')
+    np6_avg_days, np6_delay = get_testing_stats('Testing Progress Tracker - Nissan Pack 6 (A).csv')
 
+    print(f"Statistics:\n - NP5 on average takes {np5_avg_days:.2f} days\n - NP5 total delay: {np5_delay:.0f} days\n - NP6 on average takes {np6_avg_days:.2f} days\n - NP6 total delay: {np6_delay:.0f} days")
+
+    print("Estimated end dates: ")
     NP3_end_date = dt.datetime(2023, 6, 1)
-    NP5_end_date = est_end_date(NP5_cycles, days_per_normal_test_cycle=34.5, delay=23)
-    NP6_end_date = est_end_date(NP6_cycles, days_per_normal_test_cycle=35.8, delay=108)
+    NP5_end_date = est_end_date(NP5_cycles, days_per_normal_test_cycle=np5_avg_days, delay=np5_delay, estimation_method='last')
+    NP6_end_date = est_end_date(NP6_cycles, days_per_normal_test_cycle=np6_avg_days, delay=np6_delay, estimation_method='last')
     end_date = [NP3_end_date, NP6_end_date, NP5_end_date]
+    for name, d in zip(pack_name, end_date):
+        if name == 'Nissan Pack 3':
+            print(" - Testing for", name, "has been terminated")
+        else:
+            print(" - Testing for", name, "is estimated to end on", d.strftime('%A, %x'))
+
     end_date_str = [str(d.month)+'-'+str(d.day)+'-'+str(d.year) for d in end_date]
 
-    #Convert dates to datetime format
+    # convert dates to datetime format
     start_date = [dt.datetime(2020, 7, 7), dt.datetime(2020, 8, 19), dt.datetime(2021, 3, 18)]
     start_date_str = [str(d.month)+'-'+str(d.day)+'-'+str(d.year) for d in start_date]
     start_num = [(d - dt.datetime(2020, 7, 7)).days for d in start_date]
     start_number = [d - min(start_num) for d in start_num]
     total_days = [(end_date[i]-start_date[i]).days + 1 for i in range(len(start_date))]
-    completed = [progress[i]*total_days[i] for i in range(len(progress))]
-    x_ticks = [round(i) for i in np.linspace(0, max(total_days)+1, 20, endpoint=True)]
-    x_labels=[(dt.datetime(2020, 7, 7)+dt.timedelta(days=i)).strftime('%d-%b') for i in x_ticks]
+    days_completed = np.array(progress) * np.array(total_days) # element-wise multiplication of progress (%) with estimated length of test (days)
+    print(total_days)
+    x_ticks = np.linspace(0, max(total_days)+1, 40, dtype=int)
+    x_labels=[(dt.datetime(2020, 7, 7)+dt.timedelta(days=int(i))).strftime('%d-%b-%y') for i in x_ticks]
 
-    # plt.figure(figsize=(8,1.5))
-    fig, ax = plt.subplots(figsize=(12,2.2))
+    # instead of using the estimated completion, use the current date 
+    days_to_date = [(dt.date.today() - d.date()).days for d in start_date]
+    days_to_date[0] = days_completed[0] # pack 3 is terminated
+
+    # plotting the gantt chart
+    fig, ax = plt.subplots(figsize=(12, 2.2))
     ax.set_title('Gantt Chart', size=10)
     #Darker bar for completed part
-    ax.barh(y=task, left=start_number, width=completed, alpha=1, color='green', label='Completed')
+    ax.barh(y=pack_name, left=start_number, width=days_to_date, alpha=1, color='green', label='Completed')
     #Light bar for entire task
-    ax.barh(y=task, left=start_number, width=total_days, alpha=0.4, color='green', label='Estimated Duration')
+    ax.barh(y=pack_name, left=start_number, width=total_days, alpha=0.4, color='green', label='Estimated Duration')
     plt.gca().invert_yaxis()
     plt.xticks(ticks=x_ticks[::3], labels=x_labels[::3], fontsize=9, rotation=-30, ha='left')
     ax.grid(axis='x')
-    ax.legend(loc='center', bbox_to_anchor=(0.5, -.8), fancybox=True, ncol=2, borderaxespad=0., fontsize=10)
+    ax.legend(loc='center', bbox_to_anchor=(0.5, -.9), fancybox=True, ncol=2, borderaxespad=0., fontsize=10)
     plt.subplots_adjust(left=.37, bottom=.35, right=None, top=.7, wspace=None, hspace=None)
     ax.axes.yaxis.set_visible(False)
 
     # add tabulated vlaues
     col_labels=['Task','Start Date','End Date', 'Progress', 'Status']
-    table_vals=[[task[i], start_date_str[i], end_date_str[i], str(round(progress[i]*100,2))+'%', status[i]] for i in range(len(task))]
+    table_vals=[[pack_name[i], start_date_str[i], end_date_str[i], str(round(progress[i]*100,2))+'%', status[i]] for i in range(len(pack_name))]
+    
     # the rectangle is where I want to place the table
     the_table = plt.table(cellText=table_vals, colLabels=col_labels, cellLoc='center', colWidths=[.25, .20, .20, .16, .21],
                     loc='center',bbox=[-.64, 0, .64, 1.33])
     the_table.set_fontsize(10)
     the_table.auto_set_font_size(False)
+
     # add rectangle around plot so that title appears to be a table column
     xlim_left, xlim_right = plt.xlim()
     ax.add_patch(Rectangle((0,-1.55), xlim_right, 1, edgecolor='black', fill=False, clip_on=False))
@@ -254,16 +306,16 @@ summary_file = './NP5_test_summary.csv'
 np5_cycles = calc_cycles(summary_file)
 pack_name = 'NP5' 
 legend_loc = 'lower right'
-SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
-IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+# SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+# IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
 
 #  ---------------------------- NP6 Summary Plot ---------------------------- 
 summary_file = './NP6_test_summary.csv'
 np6_cycles = calc_cycles(summary_file)
 pack_name = 'NP6'  
 legend_loc = 'upper right'
-SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
-IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+# SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+# IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
 
 #  ---------------------------- gantt chart ---------------------------- 
 gantt_chart(np5_cycles, np6_cycles, save_plot, outpath=outpath)
