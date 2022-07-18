@@ -290,18 +290,7 @@ summary_file = 'NP6_test_summary.csv'
 # getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 
-# ------------------------------------ Nissan Pack 3 ------------------------------
-# path to where raw test csv is stored
-path = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/raw data/NP3/'
 
-# name of csv file
-data_file = r'cellvoltages_2021-03-03-12-37-22_NP3_Aging21.csv'
-data_file_path = path + data_file
-
-# path to test summary file
-summary_file = r'C:/Users/amirs/OneDrive - UC San Diego/college/research/Dr Tong ESS/Nissan cycle testing/NP3_test_summary.csv'
-
-#getAhAndCaps(data_file_path, cell_num, soc_curve_file, summary_file, cc)
 
 # ------------------------------------ Nissan Calendar Aging ------------------------------
 # path to test summary file
@@ -313,25 +302,23 @@ path = './calendar_aging_data'
 for file in os.listdir(path):
     calendar_data_path = os.path.join(path, file)
     if os.path.isfile(calendar_data_path):
-        getAhAndCaps(calendar_data_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)
+        pass
+        # getAhAndCaps(calendar_data_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=True)
     # TODO: move the processed files from path to ./calendar_aging_data/processed
 
 
-summary_file = './NP5_test_summary.csv'
 path = './cycle_aging_data'
 for file in os.listdir(path):
     cycle_data_path = os.path.join(path, file)
     print("Processing", cycle_data_path)
-
-
     if os.path.isfile(cycle_data_path):
         pack_num = re.findall("NP[0-9]+", cycle_data_path)[-1]
-        print(pack_num)
+        summary_file = './' + pack_num + '_test_summary.csv'
         getAhAndCaps(cycle_data_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=False) 
-        print("Moving", path, "to", os.path.join(path, 'processed', file))
+        print("Moving", cycle_data_path, "to", os.path.join(path, 'processed', file))
         os.rename(cycle_data_path, os.path.join(path, 'processed', file))
     else:
-        print("Skipping", cycle_data_path)
+        print("Skipping directory: ", cycle_data_path)
 
 # ------------------------- For Processing Multiple Files ---------------------
 # folder = r'/Users/quiana/Documents/UCSD/CER/Data_Processing/Data/Nissan/NP6/csvs/'

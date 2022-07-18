@@ -202,6 +202,7 @@ def get_testing_stats(csv: str):
 
     return avg_test_cycle_days, total_days_delayed
 
+
 def est_end_date(cycles, days_per_normal_test_cycle, delay, estimation_method='avg'):
     """ 
     days_per_normal_test_cycle: estimate this from testing progress spreadsheet on drive
@@ -259,7 +260,6 @@ def gantt_chart(NP5_cycles, NP6_cycles, save_plot=False, outpath=None):
     start_number = [d - min(start_num) for d in start_num]
     total_days = [(end_date[i]-start_date[i]).days + 1 for i in range(len(start_date))]
     days_completed = np.array(progress) * np.array(total_days) # element-wise multiplication of progress (%) with estimated length of test (days)
-    print(total_days)
     x_ticks = np.linspace(0, max(total_days)+1, 40, dtype=int)
     x_labels=[(dt.datetime(2020, 7, 7)+dt.timedelta(days=int(i))).strftime('%d-%b-%y') for i in x_ticks]
 
@@ -306,16 +306,16 @@ summary_file = './NP5_test_summary.csv'
 np5_cycles = calc_cycles(summary_file)
 pack_name = 'NP5' 
 legend_loc = 'lower right'
-# SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
-# IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
 
 #  ---------------------------- NP6 Summary Plot ---------------------------- 
 summary_file = './NP6_test_summary.csv'
 np6_cycles = calc_cycles(summary_file)
 pack_name = 'NP6'  
 legend_loc = 'upper right'
-# SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
-# IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+SOH_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
+IR_Summary(summary_file, pack_name, legend_loc, save_plot, outpath=outpath)
 
 #  ---------------------------- gantt chart ---------------------------- 
 gantt_chart(np5_cycles, np6_cycles, save_plot, outpath=outpath)
