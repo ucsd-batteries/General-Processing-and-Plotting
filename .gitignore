@@ -4,3 +4,4 @@ Nissan/cycle_aging_data/processed/*.csv
 Nissan/cycle_aging_data/*.csv
 Nissan/calendar_aging_data/processed/*.csv
 Nissan/calendar_aging_data/*.csv
+Nissan/plots/* Summary.jpg
