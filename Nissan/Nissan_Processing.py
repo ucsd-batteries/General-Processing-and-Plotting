@@ -312,7 +312,10 @@ for file in os.listdir(path):
     cycle_data_path = os.path.join(path, file)
     print("Processing", cycle_data_path)
     if os.path.isfile(cycle_data_path):
-        pack_num = re.findall("NP[0-9]+", cycle_data_path)[-1]
+        try:
+            pack_num = re.findall("NP[0-9]+", cycle_data_path)[-1]
+        except IndexError:
+            print(f'Cannot find NP[0-9]+ in the file name {cycle_data_path}')
         summary_file = './' + pack_num + '_test_summary.csv'
         getAhAndCaps(cycle_data_path, cell_num, soc_curve_file, summary_file, cc, isCalendarAging=False) 
         print("Moving", cycle_data_path, "to", os.path.join(path, 'processed', file))
